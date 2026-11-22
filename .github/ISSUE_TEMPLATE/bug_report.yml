@@ -1,0 +1,67 @@
+name: Báo lỗi
+description: Báo lỗi khi quét, giải mã hoặc hiển thị
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã báo lỗi. Vui lòng **che hoặc xoá thông tin cá nhân** (số CCCD, họ tên, ngày sinh) trong QR mẫu trước khi gửi.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Chuyện gì đã xảy ra?
+      description: Mô tả ngắn gọn hành vi sai.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Cách tái hiện
+      description: Các bước từ lúc bật camera đến lúc lỗi xảy ra.
+      placeholder: |
+        1. Bật camera với facing-mode="environment"
+        2. Đưa QR CCCD vào khung hình
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Phiên bản thư viện
+      placeholder: '0.1.0'
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Trình duyệt & hệ điều hành
+      placeholder: 'Chrome 131 trên macOS 15'
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Môi trường chạy
+      options:
+        - localhost
+        - HTTPS
+        - Khác
+    validations:
+      required: true
+  - type: textarea
+    id: qr-sample
+    attributes:
+      label: QR mẫu (đã che thông tin cá nhân)
+      description: Không bắt buộc. Thay số CCCD/họ tên bằng chuỗi giả.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log / lỗi trên console
+      render: shell

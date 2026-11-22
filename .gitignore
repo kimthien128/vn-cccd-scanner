@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .taste-skill/
+.playwright-mcp/
 *.tsbuildinfo
 *.local
 npm-debug.log*

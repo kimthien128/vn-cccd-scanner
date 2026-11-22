@@ -4,6 +4,14 @@
   "description": "Quét QR CCCD Việt Nam bằng webcam — thư viện frontend độc lập framework",
   "license": "MIT",
   "author": "kimthien128",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kimthien128/vn-cccd-scanner.git"
+  },
+  "homepage": "https://github.com/kimthien128/vn-cccd-scanner#readme",
+  "bugs": {
+    "url": "https://github.com/kimthien128/vn-cccd-scanner/issues"
+  },
   "type": "module",
   "main": "./dist/vn-cccd-scanner.cjs",
   "module": "./dist/vn-cccd-scanner.js",

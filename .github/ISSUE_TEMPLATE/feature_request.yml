@@ -1,0 +1,28 @@
+name: Đề xuất tính năng
+description: Đề xuất cải tiến hoặc tính năng mới
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Vấn đề hoặc nhu cầu
+      description: Bạn đang gặp khó khăn gì với thư viện?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Giải pháp đề xuất
+      description: Bạn muốn API hoặc hành vi hoạt động thế nào?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Phương án thay thế đã cân nhắc
+  - type: textarea
+    id: context
+    attributes:
+      label: Thông tin thêm
+      description: Trường hợp sử dụng, ví dụ QR mẫu (đã che thông tin cá nhân), liên kết liên quan.
