@@ -38,9 +38,16 @@ function setStatus(message: string, kind?: 'success' | 'error'): void {
   }
 }
 
+/** Parser trả DDMMYYYY — chỉ định dạng lại lúc hiển thị, không đổi dữ liệu. */
+function formatDate(value: string): string {
+  const match = /^(\d{2})(\d{2})(\d{4})$/.exec(value);
+  return match ? `${match[1]}/${match[2]}/${match[3]}` : value;
+}
+
 function fillForm(data: CccdData): void {
   for (const [key, input] of Object.entries(fields)) {
-    input.value = String(data[key as keyof CccdData] ?? '');
+    const value = String(data[key as keyof CccdData] ?? '');
+    input.value = key === 'dob' || key === 'issueDate' ? formatDate(value) : value;
   }
 }
 
