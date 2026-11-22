@@ -24,7 +24,6 @@ export class CccdScannerElement extends HTMLElement {
   protected readonly shadow: ShadowRoot;
   protected readonly video: HTMLVideoElement;
   protected readonly statusText: HTMLSpanElement;
-  protected readonly icon: HTMLSpanElement;
 
   private readonly decoder: QrDecoder = new ZxQrDecoder();
   private stream: MediaStream | null = null;
@@ -52,21 +51,17 @@ export class CccdScannerElement extends HTMLElement {
           <span>Đã đọc thành công</span>
         </div>
         <p class="status" part="status">
-          <span class="icon" aria-hidden="true">•</span>
-          <span class="status-text">Sẵn sàng</span>
+          <span class="status-text"></span>
         </p>
       </div>
     `;
 
     this.video = this.shadow.querySelector('video')!;
     this.statusText = this.shadow.querySelector('.status-text')!;
-    this.icon = this.shadow.querySelector('.icon')!;
   }
 
   connectedCallback(): void {
-    if (this.state === 'idle') {
-      this.setStatus('Sẵn sàng — gọi start() để bật camera');
-    }
+    // Trạng thái ban đầu để trống — demo tự hiển thị hướng dẫn bên ngoài component.
   }
 
   disconnectedCallback(): void {
@@ -149,14 +144,6 @@ export class CccdScannerElement extends HTMLElement {
   private setState(state: ScannerState): void {
     this.state = state;
     this.setAttribute('data-state', state);
-
-    const icons: Record<ScannerState, string> = {
-      idle: '•',
-      scanning: '◌',
-      success: '✓',
-      error: '!',
-    };
-    this.icon.textContent = icons[state];
   }
 
   private handleResult(raw: string): void {

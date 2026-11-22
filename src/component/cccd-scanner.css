@@ -11,6 +11,11 @@
   font-family: system-ui, sans-serif;
 }
 
+[part='scanner'] {
+  position: absolute;
+  inset: 0;
+}
+
 video {
   display: block;
   width: 100%;
