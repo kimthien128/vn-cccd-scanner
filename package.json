@@ -1,6 +1,6 @@
 {
   "name": "vn-cccd-scanner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Quét QR CCCD Việt Nam bằng webcam — thư viện frontend độc lập framework",
   "license": "MIT",
   "author": "kimthien128",
