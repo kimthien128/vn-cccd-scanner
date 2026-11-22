@@ -422,3 +422,37 @@ Repo local chạy được: `dev` / `build` / `typecheck` / `test` / `lint` / `f
 #### Tổng kết Step 2
 
 Lifecycle camera nằm hoàn toàn ở `src/core/camera.ts`: một chỗ bật (`startCamera`), một chỗ tắt (`stopCamera`). Step 3 sẽ feed `MediaStream` này vào ZXing thay vì để ZXing tự mở camera.
+
+- **Step 3.1 — Interface decoder + dependency** (xong)
+  - Sửa `package.json`: thêm `dependencies.@zxing/browser = ^0.2.1` (MIT). Chưa cài — đưa lệnh `npm install` cho bạn chạy.
+  - File tạo: `src/core/qr-decoder.ts` — `QrDecodeSession { stop() }` và `QrDecoder { decode(video, stream, onResult) }`.
+  - Đọc source `BrowserCodeReader.ts` của ZXing, ghi nhận 3 điểm thiết kế:
+    1. `decodeFromStream(stream, preview, callback)` **không gọi `getUserMedia`** → đúng ADR-001, camera vẫn do module mình quản lý.
+    2. `controls.stop()` của ZXing tự `track.stop()` + `cleanVideoSource()` → `stopCamera()` của ta bị thừa nhưng vẫn idempotent, giữ lại để cleanup thống nhất.
+    3. `scan()` **không tự dừng khi thành công** (vẫn `setTimeout(loop, 500)`) và callback bắn `NotFoundException` mỗi frame → Step 3.4 phải tự `stop()` khi có result hợp lệ và bỏ qua lỗi không nguy hiểm.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+- **Step 3.2 — Implement ZXing** (xong)
+  - File tạo: `src/core/zx-qr-decoder.ts` — `ZxQrDecoder implements QrDecoder`, dùng `BrowserQRCodeReader.decodeFromStream(stream, video, callback)`.
+  - Callback chỉ gọi `onResult(result.getText())` khi có `result`; bỏ qua toàn bộ lỗi decode của ZXing.
+  - Trả về session với `stop: () => controls.stop()`; chưa tự dừng khi có result (để Step 3.4).
+  - **File duy nhất được import `@zxing/browser`** — các phần khác chỉ thấy `QrDecoder`.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+- **Step 3.3 — Nối stream → decoder, hiện QR thô** (xong)
+  - File tạo: `src/core/scanner.ts` — `startScan(video, stream, decoder, { onResult, onError? })` trả `ScanSession.stop()` có cờ `stopped` (idempotent). Chưa có dedup/tự dừng (Step 3.4).
+  - Sửa `index.html`: thêm `<p id="qr-raw">`.
+  - Sửa `demo/main.ts`: import `ZxQrDecoder` (demo là composition root), giữ `scanSession`, gọi `startScan()` sau khi bật camera; khi tắt → `scanSession.stop()` rồi mới `stopCamera()`; cũng dừng session trong `handleTrackEnded` và nhánh catch.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+  - Chưa test thực tế với QR — đưa lệnh `npm run dev` cho bạn.
+
+- **Step 3.4 — Chống lặp + tự dừng** (xong)
+  - Sửa `src/core/scanner.ts`: giữ `lastRaw`/`lastAt`, bỏ qua cùng chuỗi trong vòng `DEDUP_WINDOW_MS = 1000`; khi có chuỗi mới → `onResult` 1 lần → `stopInternal()` → `onStopped?.()`.
+  - Thêm `onStopped?` vào `ScanCallbacks`, **chỉ bắn khi tự dừng**, không bắn khi ngoài gọi `ScanSession.stop()`.
+  - **Lỗi đã phòng:** callback có thể chạy trước khi `await decoder.decode()` trả session → dùng cờ `pendingStop`, gọi `session.stop()` ngay sau khi có session.
+  - Sửa `demo/main.ts`: dùng `autoStopped` để tránh gán lại session đã dừng; tự cập nhật trạng thái "camera đã tự dừng".
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+#### Tổng kết Step 3
+
+Chuỗi: `startCamera()` (Step 2) → `startScan()` → `QrDecoder` → `ZxQrDecoder` (duy nhất import ZXing). Decoder được thay được nhờ interface. Tự dừng + chống lặp đã có. Step 4 sẽ viết parser độc lập để validate chuỗi QR.
