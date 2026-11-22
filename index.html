@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vn-cccd-scanner demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 2rem;
+      }
+      #preview {
+        display: block;
+        width: 480px;
+        max-width: 100%;
+        margin-bottom: 1rem;
+        background: #000;
+      }
+      button {
+        margin-right: 0.5rem;
+        padding: 0.5rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>vn-cccd-scanner — demo camera</h1>
+    <video id="preview" autoplay playsinline muted></video>
+    <div>
+      <button id="start" type="button">Bật camera</button>
+      <button id="stop" type="button" disabled>Tắt camera</button>
+    </div>
+    <p id="status">Chưa bật camera</p>
+    <script type="module" src="/demo/main.ts"></script>
+  </body>
+</html>

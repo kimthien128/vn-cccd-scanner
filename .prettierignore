@@ -1,0 +1,5 @@
+dist/
+coverage/
+node_modules/
+package-lock.json
+vn-cccd-scanner-development-plan.md
