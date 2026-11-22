@@ -576,3 +576,43 @@ API public hoạt động độc lập: consumer chỉ cần `<vn-cccd-scanner>`
 #### Tổng kết Step 6
 
 Luồng MVP đầy đủ: mở camera → khung nháy → quét → parse → beep + overlay ✓ → tự dừng camera → bấm Quét lại. Lỗi parse báo đỏ nhưng vẫn quét tiếp; lỗi camera dừng hẳn. Chưa test hardening trên thiết bị thật (Step 7).
+
+- **Step 7.1 — Chạy lại unit test** (xong)
+  - `npm test` ✅ 14/14, `npm run typecheck` ✅, `npm run lint` ✅ — không có hồi quy sau khi thêm Web Component, beep, UI state.
+  - Parser vẫn chạy thuần Node, không cần webcam.
+
+- **Step 7.2 — Test tự động bằng mock** (xong)
+  - File tạo: `tests/scanner.test.ts` (5 case): `onResult` 1 lần + tự dừng + `onStopped`; dedup cùng chuỗi; bỏ qua kết quả sau khi dừng; **race** callback chạy trước khi `decode()` trả session; `stop()` idempotent không bắn `onStopped`.
+  - File tạo: `tests/camera.test.ts` (6 case): `NOT_SUPPORTED`; ánh xạ `NotAllowedError`/`NotFoundError`/`NotReadableError`; `play()` fail phải `track.stop()` + xoá `srcObject`; `stopCamera` dừng mọi track + idempotent.
+  - Tổng: `npm test` ✅ **26/26** (3 files), `typecheck` ✅, `lint` ✅.
+  - Phần test tay trên webcam thật → checklist Step 7.4 bên dưới (bạn thực hiện).
+
+- **Step 7.3 — Hardening / privacy (static)** (xong)
+  - Grep toàn bộ `src/`: **không có** `fetch`, `XMLHttpRequest`, `sendBeacon`, `WebSocket`, `localStorage`, `sessionStorage`, `indexedDB`, `axios` → dữ liệu CCCD không tự gửi đi hay lưu lại.
+  - `playSuccessBeep()` chỉ được gọi đúng **1 chỗ** (`cccd-scanner.ts:167`) trong nhánh parse thành công → không beep lặp.
+  - Cleanup đã review: `onStopped` → `cleanup()`, `disconnectedCallback` → `stop()`, `destroy()` → `cleanup()`, `play()` fail → `track.stop()`.
+  - Giới hạn đã biết: xem checklist Step 7.4.
+
+- **Step 7.4 — Checklist test tay + lỗi đã biết** (xong)
+  - Không tạo `docs/testing.md` (quyết định README-only). Checklist ghi tại đây; sẽ trích mục ngắn vào README ở Step 9.
+
+#### Checklist test tay (bạn chạy trên trình duyệt)
+
+1. Chrome/Edge desktop + webcam: bật camera → thấy hình, 4 góc nhấp nháy xanh.
+2. Chọn **Block** quyền camera → hiện `PERMISSION_DENIED`, đèn camera **không** sáng.
+3. Không cắm camera → `NOT_FOUND`.
+4. Camera đang bị Zoom/Meet chiếm → `IN_USE`.
+5. Đưa QR CCCD mẫu (3 payload trong plan, render thành QR) → JSON đúng + beep **1 tiếng** + overlay ✓ + đèn camera tắt.
+6. Đưa QR thường (ví dụ QR website) → `INVALID_FIELD_COUNT` báo đỏ nhưng **vẫn quét tiếp** (không dừng).
+7. Giữ nguyên QR sau khi đọc → **không** đọc/beep lại.
+8. Bấm **Quét lại** → quét được lần 2 (đèn camera sáng lại rồi tắt).
+9. Đóng tab / xoá element lúc đang quét → track dừng, không lỗi console.
+10. Safari iOS (nếu có) → beep vẫn phát (fallback `webkitAudioContext`).
+
+#### Lỗi/giới hạn đã biết
+
+- Chỉ nhận payload **7 field dạng `|`**; payload 6 field hoặc format khác → `INVALID_FIELD_COUNT`, không đoán.
+- Không xác thực thật/giả; không OCR/NFC (ngoài phạm vi MVP).
+- `getUserMedia` cần `https://` hoặc `localhost` — deploy production phải có HTTPS.
+- Audio bị chặn bởi autoplay policy → **im lặng** nhưng giải mã vẫn chạy (fallback có chủ đích).
+- Agent (tôi) **không test được webcam thật** — mục 1–10 cần bạn xác nhận.
