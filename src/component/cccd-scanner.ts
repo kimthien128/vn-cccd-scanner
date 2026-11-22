@@ -1,4 +1,5 @@
 import styles from './cccd-scanner.css?inline';
+import { playSuccessBeep, prepareBeep } from '../core/beep';
 import { CameraError, startCamera, stopCamera } from '../core/camera';
 import type { QrDecoder } from '../core/qr-decoder';
 import { ZxQrDecoder } from '../core/zx-qr-decoder';
@@ -22,7 +23,8 @@ function emitDetail<T>(target: HTMLElement, name: string, detail: T): void {
 export class CccdScannerElement extends HTMLElement {
   protected readonly shadow: ShadowRoot;
   protected readonly video: HTMLVideoElement;
-  protected readonly status: HTMLParagraphElement;
+  protected readonly statusText: HTMLSpanElement;
+  protected readonly icon: HTMLSpanElement;
 
   private readonly decoder: QrDecoder = new ZxQrDecoder();
   private stream: MediaStream | null = null;
@@ -45,12 +47,20 @@ export class CccdScannerElement extends HTMLElement {
           <span class="corner corner--bl"></span>
           <span class="corner corner--br"></span>
         </div>
-        <p class="status" part="status">Sẵn sàng</p>
+        <div class="overlay" part="overlay" aria-hidden="true">
+          <span>✓</span>
+          <span>Đã đọc thành công</span>
+        </div>
+        <p class="status" part="status">
+          <span class="icon" aria-hidden="true">•</span>
+          <span class="status-text">Sẵn sàng</span>
+        </p>
       </div>
     `;
 
     this.video = this.shadow.querySelector('video')!;
-    this.status = this.shadow.querySelector('.status')!;
+    this.statusText = this.shadow.querySelector('.status-text')!;
+    this.icon = this.shadow.querySelector('.icon')!;
   }
 
   connectedCallback(): void {
@@ -70,6 +80,7 @@ export class CccdScannerElement extends HTMLElement {
       return;
     }
 
+    prepareBeep();
     this.starting = true;
     this.setState('scanning');
     this.setStatus('Đang mở camera…');
@@ -132,12 +143,20 @@ export class CccdScannerElement extends HTMLElement {
   }
 
   protected setStatus(message: string): void {
-    this.status.textContent = message;
+    this.statusText.textContent = message;
   }
 
   private setState(state: ScannerState): void {
     this.state = state;
     this.setAttribute('data-state', state);
+
+    const icons: Record<ScannerState, string> = {
+      idle: '•',
+      scanning: '◌',
+      success: '✓',
+      error: '!',
+    };
+    this.icon.textContent = icons[state];
   }
 
   private handleResult(raw: string): void {
@@ -145,6 +164,7 @@ export class CccdScannerElement extends HTMLElement {
       const data = parseCccdQr(raw);
       this.setState('success');
       this.setStatus('Đọc thành công.');
+      playSuccessBeep();
       emitDetail(this, SUCCESS_EVENT, data);
     } catch (error) {
       // QR không phải CCCD → báo lỗi nhưng vẫn tiếp tục quét.

@@ -552,4 +552,27 @@ export type { CccdData, ScannerErrorDetail, ScannerErrorCode };
 #### Tổng kết Step 5
 
 API public hoạt động độc lập: consumer chỉ cần `<vn-cccd-scanner>` + 2 event + `start()/stop()/destroy()`. ZXing, parser, camera đều nằm bên trong. Step 6 sẽ thêm beep, khung trạng thái và nút "Quét lại".
+
+- **Step 6.1 — Khung quét & trạng thái** (xong)
+  - Sửa `cccd-scanner.css`: thêm icon + overlay trong Shadow DOM; CSS theo `:host([data-state=...])`:
+    `idle` góc xám · `scanning` góc xanh nhấp nháy + thanh xanh · `success` góc xanh cố định + overlay "✓ Đã đọc thành công" (animation pop) · `error` góc đỏ + thanh đỏ.
+  - Sửa `cccd-scanner.ts`: `setState()` cập nhật icon (`• ◌ ✓ !`); `setStatus()` chỉ ghi vào `.status-text` để không xoá icon.
+  - Dọn field `status` chỉ gán không dùng.
+  - Không đổi API public. Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+- **Step 6.2 — Beep xác nhận** (xong)
+  - File tạo: `src/core/beep.ts` — `prepareBeep()` + `playSuccessBeep()`, oscillator sine 880Hz, envelope 0.2s (tránh pop), hỗ trợ `webkitAudioContext`.
+  - `prepareBeep()` gọi trong `start()` để tạo/resume AudioContext **trong user gesture** (tránh autoplay policy chặn tiếng).
+  - `playSuccessBeep()` gọi trong nhánh parse thành công, trước khi emit `cccd-success`. Chỉ beep 1 lần (scanner đã tự dừng).
+  - Fallback: không hỗ trợ / bị chặn / lỗi audio → **im lặng, không throw**, không ảnh hưởng luồng quét. Không thêm dependency hay file âm thanh.
   - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+- **Step 6.3 — Quét lại + cleanup** (xong)
+  - Kiểm tra lại cơ chế đã có: tự dừng camera sau thành công (scanner `stop()` → ZXing dừng track → `onStopped` → `cleanup()`), cleanup khi rời DOM (`disconnectedCallback` → `stop()`), `destroy()` khoá vĩnh viễn.
+  - Thêm `<button id="rescan">Quét lại</button>` trong `index.html`; listener trong `demo/main.ts` xoá kết quả cũ rồi gọi `scanner.start()`.
+  - **Không thêm API public:** `start()` gọi lại được sau khi tự dừng vì `scanSession`/`stream` đã null và cờ `starting` được reset ở `finally`.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅, `npm test` ✅ 14/14. Chưa test camera thực tế.
+
+#### Tổng kết Step 6
+
+Luồng MVP đầy đủ: mở camera → khung nháy → quét → parse → beep + overlay ✓ → tự dừng camera → bấm Quét lại. Lỗi parse báo đỏ nhưng vẫn quét tiếp; lỗi camera dừng hẳn. Chưa test hardening trên thiết bị thật (Step 7).

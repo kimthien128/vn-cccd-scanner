@@ -16,6 +16,7 @@ function required<T extends Element>(selector: string): T {
 const scanner = required<CccdScannerElement>('#scanner');
 const startButton = required<HTMLButtonElement>('#start');
 const stopButton = required<HTMLButtonElement>('#stop');
+const rescanButton = required<HTMLButtonElement>('#rescan');
 const result = required<HTMLPreElement>('#result');
 
 scanner.addEventListener('cccd-success', (event) => {
@@ -35,4 +36,10 @@ startButton.addEventListener('click', () => {
 
 stopButton.addEventListener('click', () => {
   scanner.stop();
+});
+
+rescanButton.addEventListener('click', () => {
+  result.textContent = 'Đang quét lại…';
+  // start() có thể gọi lại sau khi tự dừng: scanSession/stream đã được cleanup.
+  void scanner.start();
 });

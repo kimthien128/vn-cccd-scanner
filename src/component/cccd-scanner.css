@@ -30,7 +30,8 @@ video {
   position: absolute;
   width: 22px;
   height: 22px;
-  border: 3px solid #22c55e;
+  border: 3px solid #9ca3af;
+  transition: border-color 150ms ease;
   pointer-events: none;
 }
 
@@ -71,8 +72,84 @@ video {
   right: 0;
   bottom: 0;
   left: 0;
+  margin: 0;
   padding: 0.6rem 0.8rem;
   background: rgba(0, 0, 0, 0.62);
   font-size: 0.875rem;
   text-align: center;
+}
+
+.icon {
+  margin-right: 0.35rem;
+  font-weight: 700;
+}
+
+.overlay {
+  position: absolute;
+  inset: 18% 12%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #22c55e;
+  pointer-events: none;
+}
+
+/* scanning: góc xanh nhấp nháy */
+:host([data-state='scanning']) .corner {
+  border-color: #22c55e;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+:host([data-state='scanning']) .status {
+  background: rgba(34, 197, 94, 0.75);
+}
+
+/* success: góc xanh cố định + overlay dấu tick */
+:host([data-state='success']) .corner {
+  border-color: #22c55e;
+}
+
+:host([data-state='success']) .status {
+  background: rgba(34, 197, 94, 0.85);
+}
+
+:host([data-state='success']) .overlay {
+  display: flex;
+  animation: pop 200ms ease-out;
+}
+
+/* error: góc đỏ */
+:host([data-state='error']) .corner {
+  border-color: #ef4444;
+}
+
+:host([data-state='error']) .status {
+  background: rgba(239, 68, 68, 0.85);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
