@@ -9,28 +9,27 @@
         font-family: system-ui, sans-serif;
         margin: 2rem;
       }
-      #preview {
-        display: block;
-        width: 480px;
-        max-width: 100%;
-        margin-bottom: 1rem;
-        background: #000;
-      }
       button {
-        margin-right: 0.5rem;
+        margin: 1rem 0.5rem 0 0;
         padding: 0.5rem 1rem;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 1rem;
+        border-radius: 8px;
+        white-space: pre-wrap;
       }
     </style>
   </head>
   <body>
-    <h1>vn-cccd-scanner — demo camera</h1>
-    <video id="preview" autoplay playsinline muted></video>
+    <h1>vn-cccd-scanner — demo component</h1>
+    <vn-cccd-scanner id="scanner" facing-mode="environment"></vn-cccd-scanner>
     <div>
       <button id="start" type="button">Bật camera</button>
-      <button id="stop" type="button" disabled>Tắt camera</button>
+      <button id="stop" type="button">Tắt camera</button>
     </div>
-    <p id="status">Chưa bật camera</p>
-    <p id="qr-raw">Chưa đọc được QR</p>
+    <h2>Kết quả</h2>
+    <pre id="result">Chưa có kết quả</pre>
     <script type="module" src="/demo/main.ts"></script>
   </body>
 </html>

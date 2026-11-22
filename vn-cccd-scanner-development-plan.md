@@ -483,3 +483,73 @@ Chuỗi: `startCamera()` (Step 2) → `startScan()` → `QrDecoder` → `ZxQrDec
 #### Tổng kết Step 4
 
 `parseCccdQr()` hoàn toàn độc lập camera/decoder/UI — chạy và test thuần trong Node. Sẵn sàng để Step 5 gọi từ API public.
+
+- **Step 5.1 — Thiết kế public API** (xong)
+  - Chưa có file code; đặc tả được chốt tại đây, sẽ gộp vào README ở bước cuối.
+
+#### Đặc tả API public (chốt Step 5.1)
+
+```ts
+// Web Component — API chính
+<vn-cccd-scanner facing-mode="environment"></vn-cccd-scanner>
+
+// Methods
+start(): Promise<void>;
+stop(): void;
+destroy(): void;
+
+// Events
+cccd-success  → CustomEvent<CccdData>        // detail = kết quả đã parse
+cccd-error    → CustomEvent<ScannerErrorDetail>
+
+type ScannerErrorCode =
+  | CameraErrorCode                 // PERMISSION_DENIED | NOT_FOUND | IN_USE | NOT_SUPPORTED | UNKNOWN
+  | CccdParseErrorCode              // INVALID_ID | INVALID_NAME | ... (8 mã)
+  | 'SCAN_FAILED';
+
+interface ScannerErrorDetail {
+  code: ScannerErrorCode;
+  message: string;
+  field?: string;
+}
+
+// Export từ src/index.ts ở Step 8
+defineCccdScanner(tagName?: string): void;
+parseCccdQr(raw: string): CccdData;
+export type { CccdData, ScannerErrorDetail, ScannerErrorCode };
+```
+
+**Quyết định thiết kế:**
+- Component **không tự bật camera ở `connectedCallback`** — phải gọi `start()` để xin quyền sau user gesture. `disconnectedCallback` tự cleanup.
+- `facing-mode`: `environment` (mặc định) hoặc `user`.
+- Consumer **không bao giờ thấy ZXing** — mọi chi tiết decoder nằm sau `QrDecoder`.
+- Luồng thành công: `start()` → camera → scan → `parseCccdQr()` → emit `cccd-success` → tự dừng decode + camera.
+- **Lỗi parse** (QR không phải CCCD/sai field) → emit `cccd-error` rồi **tiếp tục quét** (có thể người dùng đưa nhầm thẻ/QR khác).
+- **Lỗi camera** (`PERMISSION_DENIED`, `IN_USE`, …) → emit `cccd-error` rồi **dừng hẳn**, trả về trạng thái idle.
+
+- **Step 5.2 — Khung Web Component** (xong)
+  - File tạo: `src/component/cccd-scanner.ts`, `src/component/cccd-scanner.css`.
+  - CSS import dạng `?inline` (Vite) rồi chèn vào `<style>` trong Shadow DOM — phát hành dạng thư viện không phụ thuộc file CSS riêng.
+  - Cấu trúc Shadow DOM: `<video>` + khung 4 góc + thanh trạng thái; expose `part="scanner|video|frame|status"` để consumer decorate có giới hạn.
+  - `CccdScannerElement` chưa có `start/stop/destroy` — để Step 5.3. `connectedCallback` chỉ hiện text, **không tự bật camera** đúng quyết định 5.1.
+  - `defineCccdScanner(tagName?)` có guard `customElements.get()` — gọi nhiều lần không lỗi.
+
+- **Step 5.3 — Event + method lifecycle** (xong)
+  - File tạo: `src/types.ts` — `ScannerErrorCode` (camera + parse + `SCAN_FAILED`), `ScannerErrorDetail`.
+  - Viết lại `src/component/cccd-scanner.ts`:
+    - `start()`: camera → scan; có cờ `starting` chặn double-start; bắt `ended` của track.
+    - `handleResult()`: `parseCccdQr()` → emit `cccd-success` (detail `CccdData`); lỗi parse → emit `cccd-error` + **vẫn tiếp tục quét**.
+    - `stop()` / `destroy()` / `disconnectedCallback()`: `scanSession.stop()` → `stopCamera()`; `destroy()` khoá không cho start lại; disconnect dùng `stop()` để có thể gắn lại.
+    - Event `bubbles: true, composed: true` (thoát Shadow DOM); thêm `data-state="idle|scanning|success|error"`.
+  - **Chưa có beep** — Step 6.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅, `npm test` ✅ 14/14.
+
+- **Step 5.4 — Ví dụ consumer thuần HTML/JS** (xong)
+  - Sửa `index.html`: dùng `<vn-cccd-scanner id="scanner" facing-mode="environment">` thay `<video>` tự dựng; giữ 2 nút + thêm `<pre id="result">`.
+  - Sửa `demo/main.ts`: chỉ còn `defineCccdScanner()`, nghe 2 event (`cccd-success` → JSON, `cccd-error` → mã/lỗi), và gọi `scanner.start()` / `scanner.stop()`. Không còn import camera/decoder trực tiếp — chứng minh API public đủ dùng.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅. Chưa test camera thực tế — đưa `npm run dev` cho bạn.
+
+#### Tổng kết Step 5
+
+API public hoạt động độc lập: consumer chỉ cần `<vn-cccd-scanner>` + 2 event + `start()/stop()/destroy()`. ZXing, parser, camera đều nằm bên trong. Step 6 sẽ thêm beep, khung trạng thái và nút "Quét lại".
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
