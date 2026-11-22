@@ -209,16 +209,16 @@ thêm file khi một bước phát triển thực sự cần nó.
 
 ## 6. Tiêu chí hoàn thành MVP
 
--   [ ] Có thể chạy demo bằng webcam trên trình duyệt hỗ trợ.
--   [ ] Đọc được QR CCCD hợp lệ theo format đã xác minh.
--   [ ] Trả dữ liệu TypeScript có cấu trúc và lỗi rõ ràng.
--   [ ] Quét thành công một lần, phát beep và tự dừng camera.
--   [ ] Có thao tác quét lại.
--   [ ] Camera được giải phóng khi đóng component hoặc xảy ra lỗi.
--   [ ] Không gửi/lưu dữ liệu CCCD ngoài ý muốn.
--   [ ] Package build được, có type declarations.
--   [ ] Có thể cài và dùng trong một project khác.
--   [ ] README đủ để người mới tích hợp mà không cần hỏi tác giả.
+-   [x] Có thể chạy demo bằng webcam trên trình duyệt hỗ trợ. *(Step 2.3 + bạn test tay 22/11)*
+-   [x] Đọc được QR CCCD hợp lệ theo format đã xác minh. *(Step 3 + payload mẫu ẩn danh)*
+-   [x] Trả dữ liệu TypeScript có cấu trúc và lỗi rõ ràng. *(Step 4: `CccdData` + 8 mã lỗi)*
+-   [x] Quét thành công một lần, phát beep và tự dừng camera. *(Step 3.4 + 6.2)*
+-   [x] Có thao tác quét lại. *(Step 6.3)*
+-   [x] Camera được giải phóng khi đóng component hoặc xảy ra lỗi. *(Step 2.2 + 5.3 + test camera)*
+-   [x] Không gửi/lưu dữ liệu CCCD ngoài ý muốn. *(Step 7.3 static check)*
+-   [x] Package build được, có type declarations. *(Step 8.1: ESM + CJS + `.d.ts`)*
+-   [x] Có thể cài và dùng trong một project khác. *(Step 8.3 consumer test)*
+-   [x] README đủ để người mới tích hợp mà không cần hỏi tác giả. *(Step 9.1)*
 
 ## 7. Quy tắc làm việc với AI trong dự án
 
@@ -615,4 +615,47 @@ Luồng MVP đầy đủ: mở camera → khung nháy → quét → parse → be
 - Không xác thực thật/giả; không OCR/NFC (ngoài phạm vi MVP).
 - `getUserMedia` cần `https://` hoặc `localhost` — deploy production phải có HTTPS.
 - Audio bị chặn bởi autoplay policy → **im lặng** nhưng giải mã vẫn chạy (fallback có chủ đích).
-- Agent (tôi) **không test được webcam thật** — mục 1–10 cần bạn xác nhận.
+- Agent (tôi) **không test được webcam thật** — mục 1–10 cần bạn xác nhận. Bạn đã test tay và xác nhận OK (22/11).
+
+- **Step 8.1 — Vite library mode + output** (xong)
+  - File tạo: `src/index.ts` (public entry point — chỉ export component, parser, types; **không export** ZXing/camera/decoder), `tsconfig.build.json` (extends tsconfig, `declaration` + `emitDeclarationOnly`, `declarationDir: dist`, include `src`).
+  - Sửa `vite.config.ts`: `build.lib` entry `src/index.ts`, name `VnCccdScanner`, formats `es`/`cjs`, fileName khớp `exports` trong `package.json` (`vn-cccd-scanner.js` / `.cjs`).
+  - Sửa script `build` → `npm run typecheck && vite build && tsc -p tsconfig.build.json` (tsc sau Vite để không bị xoá `.d.ts`).
+  - **Lỗi đã fix:** ban đầu dùng `node:url` → `TS2307` vì thiếu `@types/node`; đổi sang `entry: 'src/index.ts'` (path tương đối), không thêm dependency.
+  - Kết quả build ✅: `dist/vn-cccd-scanner.js` 642 kB (gzip 144 kB), `.cjs` 487 kB (gzip 129 kB), `dist/index.d.ts` + các `.d.ts` con đầy đủ. Bundle khá to — đánh giá ở Step 8.2.
+
+- **Step 8.2 — External dependency + license** (xong)
+  - Quyết định: **external `@zxing/browser`** qua `rollupOptions.external`. Giữ trong `dependencies` → npm tự cài cho consumer. Không bundle code ZXing.
+  - Thêm `external: ['@zxing/browser']` vào `vite.config.ts`.
+  - Kết quả build ✅: module transform 248 → 9; `.js` **11.10 kB** (gzip **4.32 kB**), `.cjs` **9.59 kB** (gzip **4.02 kB**) — giảm ~98% so với bản bundle.
+  - Kiểm tra output: ESM có `import { BrowserQRCodeReader } from "@zxing/browser"`, CJS có `require("@zxing/browser")` → external đúng; CSS vẫn inline trong bundle.
+  - License: repo MIT; `@zxing/browser` MIT, `@zxing/library` Apache-2.0 — vì không đóng gói code ZXing, license của họ nằm trong `node_modules` của consumer, không cần nhét vào `dist/`. Sẽ ghi ngắn trong README.
+
+- **Step 8.3 — Cài thử vào consumer riêng** (xong)
+  - `npm pack` → `vn-cccd-scanner-0.1.0.tgz` (9.7 kB, 13 files: `dist/*` + `LICENSE` + `package.json`).
+  - Tạo consumer ngoài repo tại `/private/var/folders/bm/.../vn-cccd-consumer`: `package.json` (dep = file tarball), `index.html` dùng `<vn-cccd-scanner>`, `main.ts` import `defineCccdScanner` + `parseCccdQr` + type `CccdData`, `tsconfig.json`.
+  - `npm install` → thêm 21 packages, 0 vulnerabilities; `npm ls @zxing/browser` ✅ tự cài `0.2.1` qua `dependencies`.
+  - Kết quả: `npm run typecheck` ✅ (dùng được `.d.ts` từ ngoài repo), `npm run build` ✅ (Vite resolve ESM đúng, 244 modules — ZXing nằm ở consumer).
+
+#### Tổng kết Step 8
+
+Package build được, type declarations đầy đủ, bundle chỉ 11 kB (external ZXing), cài được vào project khác và dùng được cả JS lẫn type — đúng tiêu chí MVP. Chưa publish lên npm (Step 9).
+
+- **Dọn rác Step 8:** xóa temp `vn-cccd-consumer/` và `vn-cccd-scanner-0.1.0.tgz` outside repo; repo root sạch, giữ `dist/` (output build, đã gitignore).
+
+- **Step 9.1 — README** (xong)
+  - File tạo: `README.md` — gom từ Progress log: cài đặt, quick start, bảng API, dùng parser riêng + 8 mã lỗi, format QR 7 field + ví dụ giả + ghi chú field 6, browser/HTTPS, license dependency, privacy/limits, lệnh dev/test/build, checklist test tay, license repo.
+  - Prettier báo format chưa khớp → chạy `npx prettier --write README.md` → `prettier --check` ✅.
+  - Tự kiểm tra: `npm test` ✅ 26/26, `typecheck` ✅, `lint` ✅.
+  - README là file `.md` duy nhất sẽ còn lại sau Step 10.
+
+#### Kiểm tra lần cuối repo (22/11)
+
+- `git status`: chưa commit Step 8–9 (`package.json`, `vite.config.ts`, `README.md`, `src/index.ts`, `tsconfig.build.json`, plan). Cần bạn commit/push.
+- File `.md` trong repo: `README.md` + plan (plan sẽ xóa ở Step 10).
+- `npm test` ✅ 26/26 · `typecheck` ✅ · `lint` ✅ · `build` ✅ (ESM 11.10 kB / CJS 9.59 kB).
+- 10/10 tiêu chí MVP ở mục 6 đã tick — xem bằng chứng từng mục.
+
+#### Tổng kết Step 9 (partial)
+
+README hoàn tất. Phần release (9.2) và xóa plan (Step 10) đã dời xuống cuối cùng theo yêu cầu — làm sau khi bạn đẩy commit & tạo release.

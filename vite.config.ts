@@ -1,5 +1,16 @@
 import { defineConfig } from 'vite';
 
-// Step 1: cấu hình tối thiểu để chạy demo ở root project.
-// Step 8 sẽ chuyển sang Vite library mode (build dist/, type declarations).
-export default defineConfig({});
+export default defineConfig({
+  build: {
+    lib: {
+      entry: 'src/index.ts',
+      name: 'VnCccdScanner',
+      formats: ['es', 'cjs'],
+      fileName: (format) => `vn-cccd-scanner.${format === 'es' ? 'js' : 'cjs'}`,
+    },
+    rollupOptions: {
+      // Không đóng gói ZXing: consumer nhận qua dependencies (npm tự cài).
+      external: ['@zxing/browser'],
+    },
+  },
+});
