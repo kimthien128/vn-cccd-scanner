@@ -292,6 +292,7 @@ type CccdParseErrorCode =
   | 'INVALID_FIELD_COUNT'
   | 'INVALID_ID'
   | 'INVALID_LEGACY_ID'
+  | 'INVALID_NAME'          // bổ sung ở Step 4.2
   | 'INVALID_DOB'
   | 'INVALID_GENDER'
   | 'INVALID_ISSUE_DATE';
@@ -456,3 +457,29 @@ Lifecycle camera nằm hoàn toàn ở `src/core/camera.ts`: một chỗ bật (
 #### Tổng kết Step 3
 
 Chuỗi: `startCamera()` (Step 2) → `startScan()` → `QrDecoder` → `ZxQrDecoder` (duy nhất import ZXing). Decoder được thay được nhờ interface. Tự dừng + chống lặp đã có. Step 4 sẽ viết parser độc lập để validate chuỗi QR.
+
+- **Step 4.1 — Khung parser** (xong)
+  - File tạo: `src/parser/cccd-parser.ts` — `Gender`, `CccdData`, `CccdParseErrorCode` (7 mã), `CccdParseError`, `parseCccdQr()`.
+  - `splitPayload()`: `trim()` → `split('|')` → bỏ field rỗng **ở cuối** → yêu cầu đúng 7 field; ném `EMPTY_INPUT` / `INVALID_FIELD_COUNT`.
+  - `legacyId === ''` → `undefined`; field 6 giữ nguyên tên `nativePlace`.
+  - Chưa validate nội dung từng field (Step 4.2); cast `gender as Gender` tạm thời.
+  - Không import camera/decoder/UI — chạy thuần, sẵn sàng cho unit test.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅.
+
+- **Step 4.2 — Validation đầy đủ** (xong)
+  - **Đính chính contract:** thêm mã thứ 8 `INVALID_NAME` (bảng field Step 0.4 yêu cầu name không rỗng nhưng 7 mã cũ thiếu). Đã sửa cả code block Step 0.2.
+  - Validate theo thứ tự field 1→7, ném lỗi đầu tiên kèm `code` + `field`:
+    `id ^[0-9]{12}$`, `legacyId ^[0-9]{9}$` hoặc rỗng→`undefined`, `name` không rỗng sau trim, `dob`/`issueDate` `DDMMYYYY` + ngày có thật, `gender` đúng `Nam`/`Nữ`.
+  - `isLeapYear`: chia 4 và (không chia 100 hoặc chia 400); `29022000` hợp lệ, `29021900` không. `nativePlace` cho phép rỗng, giữ nguyên chuỗi.
+  - Output vẫn giữ `DDMMYYYY` thô — không tự normalize ISO.
+  - Tự kiểm tra: `npm run typecheck` ✅, `npm run lint` ✅. Unit test ở Step 4.3.
+
+- **Step 4.3 — Unit test parser** (xong)
+  - File tạo: `tests/cccd-parser.test.ts` — 14 case, dùng 3 payload ẩn danh trong plan làm fixture, helper `expectParseError` kiểm tra cả `code` lẫn `field`.
+  - Hợp lệ: đủ 7 field, legacy rỗng, trailing `||||`, ngày nhuận.
+  - Lỗi: `EMPTY_INPUT` (rỗng/spaces), `INVALID_FIELD_COUNT` (thiếu/thừa), `INVALID_ID`, `INVALID_LEGACY_ID`, `INVALID_NAME`, `INVALID_DOB` (29021900), `INVALID_GENDER`, `INVALID_ISSUE_DATE`.
+  - Tự kiểm tra: `npm test` ✅ **14/14**, `npm run typecheck` ✅, `npm run lint` ✅.
+
+#### Tổng kết Step 4
+
+`parseCccdQr()` hoàn toàn độc lập camera/decoder/UI — chạy và test thuần trong Node. Sẵn sàng để Step 5 gọi từ API public.
